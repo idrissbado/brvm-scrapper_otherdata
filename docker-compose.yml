@@ -1,0 +1,16 @@
+version: '3.9'
+
+services:
+  brvm_scraper:
+    build: .
+    container_name: brvm_scraper
+    env_file: .env
+    volumes:
+      - ./scrapper:/app/scrapper
+    working_dir: /app/scrapper
+    command: >
+      sh -c "
+        python brvm_obligations_scraper.py &&
+        python brvm_indexes_scraper.py &&
+        python brvm_volumes_scraper.py
+      "
