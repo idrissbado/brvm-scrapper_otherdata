@@ -49,8 +49,8 @@ This project contains Python scripts to scrape financial market data from the BR
 1. **Clone the repository:**
 
 ```bash
-git clone <your-repository-url>
-cd <your-project-folder>
+git clone https://github.com/idrissbado/brvm-scrapper_otherdata
+cd brvm-scrapper_otherdata
 ## Install Python dependencies
 
 ```bash
