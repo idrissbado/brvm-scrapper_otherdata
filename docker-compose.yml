@@ -6,14 +6,7 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: python_scrapper
-    working_dir: /app
     volumes:
       - .:/app
-    environment:
-      - DB_USER=${DB_USER}
-      - DB_PASSWORD=${DB_PASSWORD}
-      - DB_HOST=${DB_HOST}
-      - DB_PORT=${DB_PORT}
-      - DB_NAME=${DB_NAME}
+    working_dir: /app
     command: python scrapper/main.py
-
