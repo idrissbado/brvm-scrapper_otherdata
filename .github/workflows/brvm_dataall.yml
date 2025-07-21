@@ -2,7 +2,7 @@ name: BRVM Scraper
 
 on:
   schedule:
-    - cron: '0 10 * * 1-5'  # À 10h du lundi au vendredi
+    - cron: '0 15 * * 1-5'  # À 10h du lundi au vendredi
   workflow_dispatch:
 
 jobs:
