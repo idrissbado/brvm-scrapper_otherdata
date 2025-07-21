@@ -2,7 +2,7 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Installer dépendances build + librairies nécessaires pour Chromium + ChromeDriver
+# Installer dépendances pour Chromium et ChromeDriver
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     gcc \
@@ -50,4 +50,3 @@ RUN pip install --upgrade pip
 RUN pip install --no-cache-dir -r scrapper/requirements.txt
 
 CMD ["python", "scrapper/main.py"]
-
