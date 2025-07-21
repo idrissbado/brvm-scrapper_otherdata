@@ -1,14 +1,18 @@
-FROM python:3.10-slim
+FROM python:3.11-slim
 
-# Définir le répertoire de travail
 WORKDIR /app
 
+# Copier uniquement les requirements d'abord pour optimiser le cache Docker
+COPY scrapper/requirements.txt .
+
+# Installer les dépendances système nécessaires
+RUN apt-get update && apt-get install -y \
+    gcc \
+    libpq-dev \
+    && pip install --no-cache-dir -r requirements.txt
+
 # Copier tous les fichiers dans le conteneur
-COPY . .
+COPY scrapper/ ./scrapper/
 
-# Installer les dépendances depuis scrapper/requirements.txt
-RUN pip install --no-cache-dir -r scrapper/requirements.txt
-
-# Lancer main.py (qui exécute les autres fichiers .py si besoin)
-CMD ["python", "scrapper/main.py"]
-
+# Lancer tous les scripts .py du dossier scrapper
+CMD ["sh", "-c", "for f in scrapper/*.py; do python \"$f\"; done"]
