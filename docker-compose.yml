@@ -10,3 +10,6 @@ services:
       - .:/app
     working_dir: /app
     command: python scrapper/main.py
+    environment:
+      - CHROME_BIN=/usr/bin/chromium
+      - CHROMEDRIVER_PATH=/usr/lib/chromium/chromedriver
