@@ -5,7 +5,6 @@ from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
-from webdriver_manager.chrome import ChromeDriverManager
 from sqlalchemy import create_engine, text
 from dotenv import load_dotenv
 
@@ -18,13 +17,17 @@ target_postgres_engine = create_engine(
     f"{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/{os.getenv('DB_NAME')}"
 )
 
-# Setup headless browser
+# Setup headless browser with system Chromium
 options = Options()
 options.add_argument("--headless")
 options.add_argument("--no-sandbox")
 options.add_argument("--disable-dev-shm-usage")
+options.binary_location = "/usr/bin/chromium"  # chemin Chromium
 
-driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+driver = webdriver.Chrome(
+    service=Service("/usr/lib/chromium/chromedriver"),  # chemin ChromeDriver
+    options=options
+)
 
 # URL to scrape index data
 url = "https://www.brvm.org/en/indices"
