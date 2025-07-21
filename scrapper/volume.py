@@ -7,7 +7,6 @@ from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
-from webdriver_manager.chrome import ChromeDriverManager
 from sqlalchemy import create_engine, text
 from dotenv import load_dotenv
 
@@ -25,33 +24,36 @@ options = Options()
 options.add_argument("--headless")
 options.add_argument("--no-sandbox")
 options.add_argument("--disable-dev-shm-usage")
+options.binary_location = "/usr/bin/chromium"  # Utilisation de chromium système
 
-# Setup WebDriver
-driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+# Setup WebDriver avec ChromeDriver système
+driver = webdriver.Chrome(
+    service=Service("/usr/lib/chromium/chromedriver"),
+    options=options
+)
 
-# URL to scrape
+# URL à scraper
 url = "https://www.brvm.org/en/volumes/0"
 driver.get(url)
-time.sleep(7)  # Wait for JavaScript to load
+time.sleep(7)
 
-# Extract "Last update" text
+# Récupération de la date de mise à jour
 try:
     last_update_elem = driver.find_element(By.XPATH, "//*[contains(text(),'Last update')]")
     last_update_text = last_update_elem.text.strip()
 except:
     last_update_text = "Unknown update date"
 
-# Parse date from "Last update: ..."
+# Parsing de la date
 update_date = None
 date_match = re.search(r"Last update:\s*(.*)", last_update_text)
 if date_match:
     update_date = date_match.group(1)
 
-# Find all table rows
+# Récupération des lignes du tableau
 rows = driver.find_elements(By.CSS_SELECTOR, "table.table tbody tr")
 print(f"Found {len(rows)} rows")
 
-# Extract row data
 data = []
 for row in rows:
     cols = row.find_elements(By.TAG_NAME, "td")
@@ -66,22 +68,19 @@ for row in rows:
             symbol, name, number_of_transactions, traded_value, per, percent_global_value
         ])
 
-# Close the browser
 driver.quit()
 
-# Convert to DataFrame
+# Transformation en DataFrame
 df = pd.DataFrame(data, columns=[
     "SYMBOL", "NAME", "NUMBER_OF_TRANSACTIONS", "TRADED_VALUE", "PER", "PERCENT_GLOBAL_TRADED_VALUE"
 ])
 
-# Convert numeric columns
+# Conversion des colonnes numériques
 for col in ["NUMBER_OF_TRANSACTIONS", "TRADED_VALUE", "PER", "PERCENT_GLOBAL_TRADED_VALUE"]:
     df[col] = pd.to_numeric(df[col], errors='coerce')
 
-# Add raw update date
 df["UPDATE_DATE"] = update_date
 
-# Parse and clean update date
 def parse_date(date_str):
     try:
         date_part = date_str.split('-', 1)[0].strip()
@@ -93,15 +92,11 @@ df['UPDATE_DATE'] = df['UPDATE_DATE'].apply(parse_date)
 if df['UPDATE_DATE'].isna().any():
     df['UPDATE_DATE'] = df['UPDATE_DATE'].fillna(df['UPDATE_DATE'].mode()[0])
 
-# Create ID
 df['ID'] = df['NAME'] + df['UPDATE_DATE'].astype(str)
 
-# Final dataset to insert
-data = df
-
-# Insert into PostgreSQL
+# Insertion dans PostgreSQL
 with target_postgres_engine.begin() as connection:
-    for _, row in data.iterrows():
+    for _, row in df.iterrows():
         connection.execute(
             text("""
                 INSERT INTO volumes (
