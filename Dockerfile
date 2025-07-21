@@ -1,22 +1,14 @@
-FROM python:3.11-slim
+FROM python:3.10-slim
 
-# Dépendances système
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    libpq-dev \
-    && rm -rf /var/lib/apt/lists/*
-
-# Dossier de travail
+# Définir le répertoire de travail
 WORKDIR /app
 
-# Copier requirements
-COPY scraper/requirements.txt ./requirements.txt
-
-# Installer les dépendances Python
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Copier tout le code
+# Copier tous les fichiers dans le conteneur
 COPY . .
 
-# Exécuter tous les scripts dans le dossier "scrapper"
-CMD ["sh", "-c", "for f in scrapper/*.py; do python $f; done"]
+# Installer les dépendances depuis scrapper/requirements.txt
+RUN pip install --no-cache-dir -r scrapper/requirements.txt
+
+# Lancer main.py (qui exécute les autres fichiers .py si besoin)
+CMD ["python", "scrapper/main.py"]
+
