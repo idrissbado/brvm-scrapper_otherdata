@@ -6,7 +6,6 @@ from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
-from webdriver_manager.chrome import ChromeDriverManager
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import OperationalError
 from dotenv import load_dotenv
@@ -23,13 +22,16 @@ target_db_params_postgres = {
     'database': os.getenv("DB_NAME")
 }
 
-# Configure headless Chrome
+# Configure headless Chrome with binary location and chromedriver system path
 options = Options()
 options.add_argument("--headless")
 options.add_argument("--no-sandbox")
 options.add_argument("--disable-dev-shm-usage")
+options.binary_location = "/usr/bin/chromium"
 
-driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+service = Service('/usr/lib/chromium/chromedriver')
+
+driver = webdriver.Chrome(service=service, options=options)
 
 # Scrape URL
 url = "https://www.brvm.org/en/capitalisations/0"
