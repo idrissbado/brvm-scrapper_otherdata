@@ -6,35 +6,39 @@ from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
-from webdriver_manager.chrome import ChromeDriverManager
 from sqlalchemy import create_engine, text
 from dotenv import load_dotenv
 
-# Load environment variables
+# Charger les variables d'environnement
 load_dotenv()
 
-# Create database engine from environment variables
+# Créer l'engine pour la base PostgreSQL
 target_postgres_engine = create_engine(
     f"postgresql+psycopg2://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@"
     f"{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/{os.getenv('DB_NAME')}"
 )
+
+# Configuration Chrome headless avec chemin vers Chromium et chromedriver système
 options = Options()
 options.add_argument("--headless")
 options.add_argument("--no-sandbox")
 options.add_argument("--disable-dev-shm-usage")
 options.binary_location = "/usr/bin/chromium"
-driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 
+# Utiliser le chromedriver système (installé via apt dans Docker)
+service = Service('/usr/lib/chromium/chromedriver')
+
+driver = webdriver.Chrome(service=service, options=options)
 
 # URL à scraper (obligations)
 url = "https://www.brvm.org/en/cours-obligations/0"
 driver.get(url)
-time.sleep(5)  # Attendre le chargement JavaScript
+time.sleep(5)  # Attendre le chargement complet
 
-# Trouver toutes les lignes du tableau
+# Récupérer les lignes du tableau
 rows = driver.find_elements(By.CSS_SELECTOR, "table.table tbody tr")
 
-# Extraire les données ligne par ligne
+# Extraire les données
 data = []
 for row in rows:
     cols = row.find_elements(By.TAG_NAME, "td")
@@ -48,18 +52,15 @@ for row in rows:
         last_payment = cols[6].text.strip()
         data.append([symbol, name, issue_date, maturity_date, daily_price, interest, last_payment])
 
-# Fermer le navigateur
 driver.quit()
 
-# Convertir en DataFrame
 df = pd.DataFrame(data, columns=[
     "SYMBOL", "NAME", "ISSUE_DATE", "MATURITY_DATE", "DAILY_PRICE", "INTEREST", "LAST_PAYMENT_DATE_VALUE"
 ])
 
-# Nettoyage : conversion des colonnes numériques si nécessaire
+# Nettoyage des colonnes numériques
 for col in ["DAILY_PRICE", "INTEREST"]:
     df[col] = df[col].str.replace(' ', '').astype(float)
-data = pd.DataFrame(df)
 
 def extract_bond_details(name):
     try:
@@ -83,11 +84,11 @@ def extract_bond_details(name):
         pass
     return pd.Series({'BOND_TYPE': None, 'COUPON_RATE': None, 'ISSUE_YEAR': None, 'MATURITY_YEAR': None})
 
-bond_details = data['NAME'].apply(extract_bond_details)
-data = pd.concat([data, bond_details], axis=1)
+bond_details = df['NAME'].apply(extract_bond_details)
+df = pd.concat([df, bond_details], axis=1)
 
-data['ISSUE_YEAR'] = data['ISSUE_YEAR'].astype('Int64')
-data['MATURITY_YEAR'] = data['MATURITY_YEAR'].astype('Int64')
+df['ISSUE_YEAR'] = df['ISSUE_YEAR'].astype('Int64')
+df['MATURITY_YEAR'] = df['MATURITY_YEAR'].astype('Int64')
 
 def extract_payment_details(payment_str):
     try:
@@ -102,10 +103,10 @@ def extract_payment_details(payment_str):
     except:
         return pd.Series({'LAST_PAYMENT_DATE_ONLY': None, 'LAST_PAYMENT_VALUE': None})
 
-payment_details = data['LAST_PAYMENT_DATE_VALUE'].apply(extract_payment_details)
-data = pd.concat([data, payment_details], axis=1)
+payment_details = df['LAST_PAYMENT_DATE_VALUE'].apply(extract_payment_details)
+df = pd.concat([df, payment_details], axis=1)
 
-data = (data
+df = (df
         .drop(columns=['MATURITY_DATE', 'LAST_PAYMENT_DATE_VALUE'])
         .rename(columns={
             'MATURITY_YEAR': 'MATURITY_DATE',
@@ -121,12 +122,12 @@ def create_bond_id(row):
     except:
         return None
 
-data['ID'] = data.apply(create_bond_id, axis=1)
+df['ID'] = df.apply(create_bond_id, axis=1)
 
 def clean_data(value):
     return None if pd.isna(value) else value
 
-data = data.rename(columns={
+df = df.rename(columns={
     'SYMBOL': 'symbol',
     'NAME': 'name',
     'ISSUE_DATE': 'issue_date',
@@ -138,17 +139,17 @@ data = data.rename(columns={
 
 date_cols = ['issue_date', 'maturity_date', 'last_payment_date']
 for col in date_cols:
-    data[col] = pd.to_datetime(data[col], errors='coerce')
-    data[col] = data[col].dt.strftime('%Y-%m-%d').replace('NaT', None)
+    df[col] = pd.to_datetime(df[col], errors='coerce')
+    df[col] = df[col].dt.strftime('%Y-%m-%d').replace('NaT', None)
 
 numeric_cols = ['daily_price', 'interest', 'value', 'coupon_rate']
 for col in numeric_cols:
-    if col in data.columns:
-        data[col] = pd.to_numeric(data[col], errors='coerce')
-        data[col] = data[col].apply(clean_data)
+    if col in df.columns:
+        df[col] = pd.to_numeric(df[col], errors='coerce')
+        df[col] = df[col].apply(clean_data)
 
-if 'ISSUE_YEAR' in data.columns:
-    data['ISSUE_YEAR'] = data['ISSUE_YEAR'].astype('Int64').astype(object).where(data['ISSUE_YEAR'].notna(), None)
+if 'ISSUE_YEAR' in df.columns:
+    df['ISSUE_YEAR'] = df['ISSUE_YEAR'].astype('Int64').astype(object).where(df['ISSUE_YEAR'].notna(), None)
 
 insert_query = """
 INSERT INTO obligations (
@@ -175,7 +176,7 @@ ON CONFLICT (id) DO UPDATE SET
 """
 
 with target_postgres_engine.begin() as connection:
-    for _, row in data.iterrows():
+    for _, row in df.iterrows():
         params = {
             'id': clean_data(row['ID']),
             'symbol': clean_data(row['symbol']),
