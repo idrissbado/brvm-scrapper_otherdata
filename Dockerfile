@@ -1,7 +1,7 @@
-# Utilise l'image Python 3.11
+# Utilise une image Python 3.11 légère
 FROM python:3.11-slim
 
-# Installe les dépendances nécessaires
+# Installe les dépendances système nécessaires pour Chromium + Selenium
 RUN apt-get update && apt-get install -y \
     wget \
     unzip \
@@ -23,20 +23,23 @@ RUN apt-get update && apt-get install -y \
     libxrandr2 \
     xdg-utils \
     chromium \
-    chromium-driver
+    chromium-driver \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
-# Définit les variables d'environnement pour Chrome
+# Variables d’environnement pour Chrome/Selenium
 ENV CHROME_BIN=/usr/bin/chromium
 ENV CHROMEDRIVER_PATH=/usr/lib/chromium/chromedriver
 
-# Crée le dossier de travail
+# Définir le répertoire de travail
 WORKDIR /app
 
-# Copie le projet
-COPY . /app
+# Copier tout le projet
+COPY . .
 
-# Installe les dépendances Python
+# Installer les dépendances Python
+RUN pip install --upgrade pip
 RUN pip install --no-cache-dir -r scrapper/requirements.txt
 
-# Lance le script principal
+# Lancer le script principal
 CMD ["python", "scrapper/main.py"]
