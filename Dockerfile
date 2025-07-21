@@ -2,17 +2,24 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Copier uniquement les requirements d'abord pour optimiser le cache Docker
-COPY scrapper/requirements.txt .
-
-# Installer les dépendances système nécessaires
-RUN apt-get update && apt-get install -y \
+# Installer les dépendances système pour compiler numpy/pandas
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
     gcc \
+    libffi-dev \
     libpq-dev \
-    && pip install --no-cache-dir -r requirements.txt
+    libssl-dev \
+    libxml2-dev \
+    libxslt1-dev \
+    libjpeg-dev \
+    zlib1g-dev \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
-# Copier tous les fichiers dans le conteneur
-COPY scrapper/ ./scrapper/
+COPY . .
 
-# Lancer tous les scripts .py du dossier scrapper
-CMD ["sh", "-c", "for f in scrapper/*.py; do python \"$f\"; done"]
+RUN pip install --upgrade pip
+RUN pip install --no-cache-dir -r scrapper/requirements.txt
+
+CMD ["python", "scrapper/main.py"]
+
