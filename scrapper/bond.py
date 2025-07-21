@@ -8,7 +8,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 from sqlalchemy import create_engine, text
 from dotenv import load_dotenv
-
+import os
 # Charger les variables d'environnement
 load_dotenv()
 
@@ -17,18 +17,14 @@ target_postgres_engine = create_engine(
     f"postgresql+psycopg2://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@"
     f"{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/{os.getenv('DB_NAME')}"
 )
-
-# Configuration Chrome headless avec chemin vers Chromium et chromedriver système
 options = Options()
 options.add_argument("--headless")
 options.add_argument("--no-sandbox")
 options.add_argument("--disable-dev-shm-usage")
-options.binary_location = "/usr/bin/chromium"
 
-# Utiliser le chromedriver système (installé via apt dans Docker)
-service = Service('/usr/lib/chromium/chromedriver')
+CHROMEDRIVER_PATH = os.getenv("CHROMEDRIVER_PATH", "/usr/lib/chromium/chromedriver")
 
-driver = webdriver.Chrome(service=service, options=options)
+driver = webdriver.Chrome(service=Service(CHROMEDRIVER_PATH), options=options)
 
 # URL à scraper (obligations)
 url = "https://www.brvm.org/en/cours-obligations/0"
