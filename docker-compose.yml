@@ -10,7 +10,8 @@ services:
     working_dir: /app/scrapper
     command: >
       sh -c "
-        python brvm_obligations_scraper.py &&
-        python brvm_indexes_scraper.py &&
-        python brvm_volumes_scraper.py
+        python bond.py &&
+        python capitalisation.py &&
+        python index.py &&
+        python volumes.py
       "
