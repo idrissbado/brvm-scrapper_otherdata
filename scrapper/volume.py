@@ -9,6 +9,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 from sqlalchemy import create_engine, text
 import os
+from dotenv import load_dotenv
 # Charger les variables d'environnement
 load_dotenv()
 
