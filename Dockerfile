@@ -1,51 +1,42 @@
+# Utilise l'image Python 3.11
 FROM python:3.11-slim
 
-WORKDIR /app
-
-# Dépendances nécessaires
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# Installe les dépendances nécessaires
+RUN apt-get update && apt-get install -y \
     wget \
     unzip \
+    curl \
+    gnupg \
     ca-certificates \
     fonts-liberation \
     libasound2 \
-    libatk1.0-0 \
     libatk-bridge2.0-0 \
-    libc6 \
-    libcairo2 \
+    libatk1.0-0 \
     libcups2 \
     libdbus-1-3 \
-    libexpat1 \
-    libfontconfig1 \
-    libgcc1 \
-    libglib2.0-0 \
-    libgtk-3-0 \
+    libgdk-pixbuf2.0-0 \
     libnspr4 \
     libnss3 \
-    libpango-1.0-0 \
-    libx11-6 \
     libx11-xcb1 \
-    libxcb1 \
     libxcomposite1 \
-    libxcursor1 \
     libxdamage1 \
-    libxext6 \
-    libxfixes3 \
-    libxi6 \
     libxrandr2 \
-    libxrender1 \
-    libxss1 \
-    libxtst6 \
+    xdg-utils \
     chromium \
-    chromium-driver \
-    && rm -rf /var/lib/apt/lists/*
+    chromium-driver
 
+# Définit les variables d'environnement pour Chrome
 ENV CHROME_BIN=/usr/bin/chromium
 ENV CHROMEDRIVER_PATH=/usr/lib/chromium/chromedriver
 
-COPY . .
+# Crée le dossier de travail
+WORKDIR /app
 
-RUN pip install --upgrade pip
+# Copie le projet
+COPY . /app
+
+# Installe les dépendances Python
 RUN pip install --no-cache-dir -r scrapper/requirements.txt
 
+# Lance le script principal
 CMD ["python", "scrapper/main.py"]
