@@ -1,40 +1,54 @@
 import os
-import time
 import re
 import pandas as pd
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 from sqlalchemy import create_engine, text
 from dotenv import load_dotenv
-import os
+
 # Charger les variables d'environnement
 load_dotenv()
 
-# Créer l'engine pour la base PostgreSQL
+# Configuration de la connexion à PostgreSQL
 target_postgres_engine = create_engine(
     f"postgresql+psycopg2://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@"
     f"{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/{os.getenv('DB_NAME')}"
 )
+
+# Configuration options Chrome pour Docker headless
 options = Options()
 options.add_argument("--headless")
 options.add_argument("--no-sandbox")
 options.add_argument("--disable-dev-shm-usage")
+options.add_argument("--disable-gpu")
+options.add_argument("--window-size=1920,1080")
 
+# Définir explicitement le chemin du binaire Chromium
+options.binary_location = os.getenv('CHROME_BIN', '/usr/bin/chromium')
+
+# Chemin du chromedriver
 CHROMEDRIVER_PATH = os.getenv("CHROMEDRIVER_PATH", "/usr/lib/chromium/chromedriver")
 
+# Initialisation du driver Chrome
 driver = webdriver.Chrome(service=Service(CHROMEDRIVER_PATH), options=options)
 
 # URL à scraper (obligations)
 url = "https://www.brvm.org/en/cours-obligations/0"
 driver.get(url)
-time.sleep(5)  # Attendre le chargement complet
+
+# Attendre que le tableau soit chargé (max 10s)
+WebDriverWait(driver, 10).until(
+    EC.presence_of_element_located((By.CSS_SELECTOR, "table.table tbody tr"))
+)
 
 # Récupérer les lignes du tableau
 rows = driver.find_elements(By.CSS_SELECTOR, "table.table tbody tr")
 
-# Extraire les données
+# Extraction des données
 data = []
 for row in rows:
     cols = row.find_elements(By.TAG_NAME, "td")
@@ -58,6 +72,7 @@ df = pd.DataFrame(data, columns=[
 for col in ["DAILY_PRICE", "INTEREST"]:
     df[col] = df[col].str.replace(' ', '').astype(float)
 
+# Extraction détails obligations
 def extract_bond_details(name):
     try:
         match = re.search(r'^(.*?)\s+(\d+[,.]\d+)%\s+(\d{4})-(\d{4})$', str(name))
@@ -86,6 +101,7 @@ df = pd.concat([df, bond_details], axis=1)
 df['ISSUE_YEAR'] = df['ISSUE_YEAR'].astype('Int64')
 df['MATURITY_YEAR'] = df['MATURITY_YEAR'].astype('Int64')
 
+# Extraction détails paiement
 def extract_payment_details(payment_str):
     try:
         if pd.isna(payment_str):
@@ -110,6 +126,7 @@ df = (df
             'LAST_PAYMENT_VALUE': 'VALUE'
         }))
 
+# Création ID unique obligation
 def create_bond_id(row):
     try:
         bond_type = str(row['BOND_TYPE']).replace(' ', '')
@@ -147,6 +164,7 @@ for col in numeric_cols:
 if 'ISSUE_YEAR' in df.columns:
     df['ISSUE_YEAR'] = df['ISSUE_YEAR'].astype('Int64').astype(object).where(df['ISSUE_YEAR'].notna(), None)
 
+# Requête d'insertion PostgreSQL avec gestion des conflits (upsert)
 insert_query = """
 INSERT INTO obligations (
     id, symbol, name, issue_date, maturity_date, 
@@ -171,6 +189,7 @@ ON CONFLICT (id) DO UPDATE SET
     bond_type = EXCLUDED.bond_type
 """
 
+# Insertion des données dans la base
 with target_postgres_engine.begin() as connection:
     for _, row in df.iterrows():
         params = {
