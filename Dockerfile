@@ -1,4 +1,3 @@
-# Utiliser une image Python officielle légère
 FROM python:3.11-slim
 
 # Installer les dépendances système nécessaires à Chrome et Selenium
@@ -26,24 +25,24 @@ RUN apt-get update && apt-get install -y \
     xdg-utils \
     && rm -rf /var/lib/apt/lists/*
 
-# Installer Chrome stable
+# Installer Google Chrome stable
 RUN curl -fsSL https://dl.google.com/linux/linux_signing_key.pub | gpg --dearmor -o /usr/share/keyrings/google-linux-signing-keyring.gpg \
     && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-linux-signing-keyring.gpg] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list \
     && apt-get update && apt-get install -y google-chrome-stable \
     && rm -rf /var/lib/apt/lists/*
 
-# Installer chromedriver correspondant à la version Chrome
+# Installer webdriver-manager
 RUN pip install webdriver-manager
 
-# Créer et définir le dossier de travail
+# Définir le dossier de travail
 WORKDIR /app/scrapper
 
-# Copier requirements.txt et installer les dépendances Python
+# Copier requirements.txt et installer les dépendances
 COPY scrapper/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copier le code source dans l'image
+# Copier tout le contenu du dossier scrapper
 COPY scrapper/ .
 
-# Par défaut, exécuter bash (tu peux override avec docker-compose)
-CMD ["bash"]
+# Commande pour exécuter tous les fichiers .py un par un
+CMD find . -name "*.py" | sort | xargs -n 1 python
