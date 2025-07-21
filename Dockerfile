@@ -2,19 +2,15 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Installer dépendances pour Chromium et ChromeDriver
+# Dépendances nécessaires
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    gcc \
-    libffi-dev \
-    libpq-dev \
-    libssl-dev \
-    zlib1g-dev \
     wget \
+    unzip \
     ca-certificates \
     fonts-liberation \
     libasound2 \
     libatk1.0-0 \
+    libatk-bridge2.0-0 \
     libc6 \
     libcairo2 \
     libcups2 \
@@ -42,7 +38,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxtst6 \
     chromium \
     chromium-driver \
-    --no-install-recommends && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/*
+
+ENV CHROME_BIN=/usr/bin/chromium
+ENV CHROMEDRIVER_PATH=/usr/lib/chromium/chromedriver
 
 COPY . .
 
