@@ -2,12 +2,12 @@ name: BRVM Scraper
 
 on:
   schedule:
-    - cron: '0 15 * * 1-5'  # À 15h UTC du lundi au vendredi
+    - cron: '0 15 * * 1-5'  # Tous les jours de la semaine à 15h UTC (10h CI)
   workflow_dispatch:
 
 jobs:
   run-scraper:
-    runs-on: ubuntu-22.04  # ⚠️ Ubuntu 24.04 pose problème pour Docker
+    runs-on: ubuntu-latest
 
     env:
       DB_USER: ${{ secrets.DB_USER }}
@@ -25,13 +25,10 @@ jobs:
         with:
           python-version: 3.11
 
-      - name: Install Docker
-        run: |
-          curl -fsSL https://get.docker.com | sh
-          sudo usermod -aG docker $USER
-          docker --version
+      - name: Set up Docker (latest for Ubuntu 24.04)
+        uses: docker-practice/actions-setup-docker@v1
 
-      - name: Build and run scraper container
+      - name: Build and run Docker container
         run: |
           docker build -t brvm_scraper .
           docker run --rm \
