@@ -9,29 +9,23 @@ from selenium.webdriver.chrome.options import Options
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import OperationalError
 from dotenv import load_dotenv
-
-# Load environment variables from .env
+import os
+# Charger les variables d'environnement
 load_dotenv()
 
-# Database connection parameters
-target_db_params_postgres = {
-    'host': os.getenv("DB_HOST"),
-    'port': os.getenv("DB_PORT"),
-    'user': os.getenv("DB_USER"),
-    'password': os.getenv("DB_PASSWORD"),
-    'database': os.getenv("DB_NAME")
-}
-
-# Configure headless Chrome with binary location and chromedriver system path
+# Créer l'engine pour la base PostgreSQL
+target_postgres_engine = create_engine(
+    f"postgresql+psycopg2://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@"
+    f"{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/{os.getenv('DB_NAME')}"
+)
 options = Options()
 options.add_argument("--headless")
 options.add_argument("--no-sandbox")
 options.add_argument("--disable-dev-shm-usage")
-options.binary_location = "/usr/bin/chromium"
 
-service = Service('/usr/lib/chromium/chromedriver')
+CHROMEDRIVER_PATH = os.getenv("CHROMEDRIVER_PATH", "/usr/lib/chromium/chromedriver")
 
-driver = webdriver.Chrome(service=service, options=options)
+driver = webdriver.Chrome(service=Service(CHROMEDRIVER_PATH), options=options)
 
 # Scrape URL
 url = "https://www.brvm.org/en/capitalisations/0"
